@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Non-Copying Roulette</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
+
+:root {
+  --bg: #2a2d35;
+  --s1: #32363f;
+  --s2: #3a3e48;
+  --border: rgba(255,255,255,0.1);
+  --oro: #d4a843;
+  --oro2: #e8c060;
+  --rosso: #c0392b;
+  --verde: #00a878;
+  --blu: #2980b9;
+  --viola: #8e44ad;
+  --testo: #dcdbd5;
+  --dim: #707070;
+  --dim2: #909090;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);font-family:'JetBrains Mono',monospace;color:var(--testo);min-height:100vh;padding:14px;}
+
+/* HEADER */
+.hdr{text-align:center;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.hdr h1{font-family:'Cormorant Garamond',serif;font-size:clamp(1.5rem,5vw,2.2rem);font-weight:700;color:var(--oro);letter-spacing:2px;}
+.hdr p{font-size:0.55rem;color:var(--dim2);letter-spacing:3px;text-transform:uppercase;margin-top:3px;}
+
+/* CARD */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;}
+.clabel{font-size:0.54rem;letter-spacing:3px;text-transform:uppercase;color:var(--dim2);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;}
+
+/* CASSA */
+.cassa-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+.cassa-val{font-family:'Cormorant Garamond',serif;font-size:clamp(1.8rem,7vw,2.8rem);font-weight:700;color:var(--oro2);text-shadow:0 0 20px rgba(212,168,67,0.3);}
+.cassa-stats{display:flex;flex-direction:column;gap:3px;text-align:right;}
+.cst{font-size:0.58rem;color:var(--dim2);}
+.cst span{color:var(--testo);}
+.progress-wrap{height:3px;background:rgba(255,255,255,0.08);border-radius:2px;margin-top:8px;overflow:hidden;}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--oro),var(--oro2));border-radius:2px;transition:width 0.5s ease;}
+.cassa-delta{font-size:0.6rem;margin-top:5px;text-align:right;}
+
+/* INPUT */
+.input-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.num-input{width:70px;height:46px;background:rgba(255,255,255,0.07);border:1px solid var(--border);border-radius:8px;color:var(--testo);font-family:'JetBrains Mono',monospace;font-size:1.3rem;font-weight:600;text-align:center;outline:none;transition:border-color 0.2s;}
+.num-input:focus{border-color:var(--oro);}
+.btn{height:46px;border:none;border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:0.7rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;padding:0 16px;}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.12);}
+.btn:active{transform:none;}
+.btn-oro{background:var(--oro);color:#000;flex:1;min-width:100px;}
+.btn-ghost{background:transparent;color:var(--dim2);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--oro);color:var(--oro);}
+.btn-red{background:transparent;color:rgba(255,80,80,0.5);border:1px solid rgba(255,80,80,0.15);width:100%;margin-top:4px;}
+.btn-red:hover{border-color:rgba(255,80,80,0.4);color:rgba(255,80,80,0.8);}
+
+/* SWITCH SOGLIA */
+.switch-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;}
+.switch-label{font-size:0.6rem;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;white-space:nowrap;}
+.switch-btns{display:flex;background:rgba(0,0,0,0.2);border-radius:7px;padding:3px;gap:3px;}
+.sw-btn{padding:6px 14px;border:none;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:0.65rem;font-weight:600;letter-spacing:1px;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--dim2);}
+.sw-btn.sw-active{background:var(--oro);color:#000;box-shadow:0 2px 8px rgba(212,168,67,0.3);}
+.sw-btn:hover:not(.sw-active){color:var(--testo);}
+.switch-info{font-size:0.6rem;color:var(--oro);opacity:0.8;}
+
+/* PREVIEW BADGES */
+.prev-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px;min-height:26px;}
+.bdg{padding:3px 8px;border-radius:16px;font-size:0.56rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+.bdg-r{background:rgba(192,57,43,0.2);color:#e74c3c;border:1px solid rgba(192,57,43,0.3);}
+.bdg-n{background:rgba(255,255,255,0.05);color:#95a5a6;border:1px solid rgba(255,255,255,0.1);}
+.bdg-v{background:rgba(0,168,120,0.15);color:var(--verde);border:1px solid rgba(0,168,120,0.3);}
+.bdg-a{background:rgba(41,128,185,0.15);color:#5dade2;border:1px solid rgba(41,128,185,0.3);}
+.bdg-b{background:rgba(142,68,173,0.15);color:#a569bd;border:1px solid rgba(142,68,173,0.3);}
+.bdg-p{background:rgba(243,156,18,0.12);color:#f0b429;border:1px solid rgba(243,156,18,0.25);}
+.bdg-d{background:rgba(231,76,60,0.1);color:#ec7063;border:1px solid rgba(231,76,60,0.2);}
+.bdg-z{background:rgba(255,255,255,0.03);color:var(--dim2);border:1px solid var(--border);}
+
+/* STORICO */
+.st-scroll{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px;}
+.st-scroll::-webkit-scrollbar{height:2px;}
+.st-scroll::-webkit-scrollbar-thumb{background:var(--oro);border-radius:2px;}
+.nc{flex-shrink:0;width:30px;height:38px;border-radius:5px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:0.68rem;font-weight:600;border:1px solid transparent;transition:all 0.15s;}
+.nc-r{background:rgba(192,57,43,0.2);border-color:rgba(192,57,43,0.3);color:#e74c3c;}
+.nc-n{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);color:#c8c8c8;}
+.nc-v{background:rgba(0,168,120,0.15);border-color:rgba(0,168,120,0.3);color:var(--verde);}
+.nc.win{border-color:var(--oro)!important;box-shadow:0 0 6px rgba(201,168,76,0.25);}
+.nc.new{animation:pop 0.3s ease;}
+.nc-idx{font-size:0.4rem;color:var(--dim);margin-top:1px;}
+@keyframes pop{0%{transform:scale(0.5);opacity:0;}70%{transform:scale(1.1);}100%{transform:scale(1);opacity:1;}}
+
+/* INFO BAR */
+.ibar{display:flex;justify-content:space-between;font-size:0.54rem;color:var(--dim2);margin-bottom:10px;padding:6px 10px;background:var(--s1);border-radius:7px;border:1px solid var(--border);}
+.ibar span{color:var(--testo);}
+
+/* ALERT */
+.alert-wrap{display:none;margin-bottom:12px;}
+.alert-wrap.show{display:block;}
+.alert-box{background:linear-gradient(135deg,rgba(201,168,76,0.18),rgba(201,168,76,0.04));border:1px solid var(--oro);border-radius:10px;padding:14px;text-align:center;animation:fadeIn 0.3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+.alert-title{font-family:'Cormorant Garamond',serif;font-size:1.3rem;color:var(--oro);margin-bottom:4px;}
+.alert-sub{font-size:0.58rem;color:rgba(201,168,76,0.65);letter-spacing:2px;text-transform:uppercase;}
+
+/* PUNTATA ATTIVA */
+.puntata-box{display:none;background:linear-gradient(135deg,rgba(192,57,43,0.12),rgba(192,57,43,0.03));border:1px solid rgba(192,57,43,0.3);border-radius:10px;padding:14px;margin-bottom:12px;}
+.puntata-box.show{display:block;}
+.punt-title{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:#e74c3c;margin-bottom:8px;}
+.punt-istruzioni{margin-bottom:10px;display:flex;flex-direction:column;gap:5px;}
+.istr-row{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.25);border-radius:7px;padding:7px 10px;font-size:0.72rem;font-weight:600;color:var(--oro2);letter-spacing:0.5px;}
+.punt-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.punt-item{background:rgba(0,0,0,0.2);border-radius:7px;padding:8px;text-align:center;}
+.punt-label{font-size:0.52rem;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px;}
+.punt-val{font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--oro2);font-weight:700;}
+.punt-val.small{font-size:0.9rem;}
+.colpi-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
+.colpo-chip{width:34px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:600;border:1px solid transparent;transition:all 0.25s;flex-shrink:0;}
+.cc-pend{background:rgba(201,168,76,0.08);border-color:rgba(201,168,76,0.2);color:rgba(201,168,76,0.5);}
+.cc-curr{background:rgba(201,168,76,0.2);border-color:var(--oro);color:var(--oro);box-shadow:0 0 8px rgba(201,168,76,0.3);}
+.cc-win{background:rgba(0,168,120,0.2);border-color:var(--verde);color:var(--verde);}
+.cc-lose{background:rgba(192,57,43,0.2);border-color:var(--rosso);color:#e74c3c;}
+.cc-zero{background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.15);color:#95a5a6;}
+.btn-esito-row{display:flex;gap:8px;}
+.btn-vinto{flex:1;background:rgba(0,168,120,0.15);color:var(--verde);border:1px solid rgba(0,168,120,0.3);border-radius:8px;height:42px;font-family:'JetBrains Mono',monospace;font-size:0.68rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;}
+.btn-perso{flex:1;background:rgba(192,57,43,0.15);color:#e74c3c;border:1px solid rgba(192,57,43,0.3);border-radius:8px;height:42px;font-family:'JetBrains Mono',monospace;font-size:0.68rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;}
+.btn-zero{flex:1;background:rgba(0,168,120,0.08);color:#95a5a6;border:1px solid rgba(255,255,255,0.1);border-radius:8px;height:42px;font-family:'JetBrains Mono',monospace;font-size:0.68rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all 0.2s;}
+.btn-vinto:hover,.btn-perso:hover,.btn-zero:hover{transform:translateY(-1px);filter:brightness(1.15);}
+
+/* MONITOR */
+.monitor{background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:10px;transition:border-color 0.3s,box-shadow 0.3s;}
+.monitor.hot{border-color:var(--oro);animation:pulse 1.2s ease infinite alternate;}
+@keyframes pulse{from{box-shadow:0 0 8px rgba(201,168,76,0.08);}to{box-shadow:0 0 20px rgba(201,168,76,0.3);}}
+.mon-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
+.mon-title{font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:600;}
+.mon-title.c{color:#e74c3c;}
+.mon-title.a{color:#5dade2;}
+.mon-title.p{color:#f0b429;}
+.mon-title.doz{color:#5dade2;}
+.mon-title.col{color:#a569bd;}
+.fc-d1{background:rgba(41,128,185,0.18);border-color:rgba(41,128,185,0.3);color:#5dade2;}
+.fc-d2{background:rgba(39,174,96,0.18);border-color:rgba(39,174,96,0.3);color:#58d68d;}
+.fc-d3{background:rgba(142,68,173,0.18);border-color:rgba(142,68,173,0.3);color:#a569bd;}
+.fc-c1{background:rgba(230,126,34,0.18);border-color:rgba(230,126,34,0.3);color:#f0a500;}
+.fc-c2{background:rgba(231,76,60,0.18);border-color:rgba(231,76,60,0.3);color:#ec7063;}
+.fc-c3{background:rgba(52,152,219,0.18);border-color:rgba(52,152,219,0.3);color:#85c1e9;}
+/* SEQUENZE LUNGHE */
+.seq-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.seq-item{background:rgba(0,0,0,0.15);border:1px solid var(--border);border-radius:7px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;transition:all 0.3s;}
+.seq-item.alert{border-color:var(--oro);background:rgba(212,168,67,0.1);animation:pulse 1s ease infinite alternate;}
+.seq-item.alt-alert{border-color:#5dade2;background:rgba(93,173,226,0.1);}
+.seq-name{font-size:0.58rem;color:var(--dim2);letter-spacing:1px;}
+.seq-count{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:700;color:var(--testo);}
+.seq-count.hot{color:var(--oro);}
+.seq-count.alt-hot{color:#5dade2;}
+.seq-bar{height:3px;background:rgba(0,0,0,0.2);border-radius:2px;margin-top:4px;overflow:hidden;}
+.seq-fill{height:100%;border-radius:2px;transition:width 0.4s ease;}
+.dots{display:flex;gap:4px;}
+.dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);transition:all 0.25s;}
+.dot.on{background:var(--oro);border-color:var(--oro);box-shadow:0 0 5px rgba(201,168,76,0.5);}
+.rlabel{font-size:0.5rem;color:var(--dim2);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;}
+.fin-row{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:7px;}
+.fc{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:0.55rem;font-weight:600;border:1px solid transparent;flex-shrink:0;transition:all 0.15s;}
+.fc-r{background:rgba(192,57,43,0.2);border-color:rgba(192,57,43,0.3);color:#e74c3c;}
+.fc-n{background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);color:#c0c0c0;}
+.fc-a{background:rgba(41,128,185,0.15);border-color:rgba(41,128,185,0.25);color:#5dade2;}
+.fc-b{background:rgba(142,68,173,0.15);border-color:rgba(142,68,173,0.25);color:#a569bd;}
+.fc-p{background:rgba(243,156,18,0.12);border-color:rgba(243,156,18,0.2);color:#f0b429;}
+.fc-d{background:rgba(231,76,60,0.1);border-color:rgba(231,76,60,0.18);color:#ec7063;}
+.fc-em{background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.06);color:transparent;}
+.fc.ok{border-color:#2ecc71!important;box-shadow:0 0 4px rgba(46,204,113,0.35);}
+.fc.ko{border-color:var(--rosso)!important;box-shadow:0 0 4px rgba(192,57,43,0.3);}
+.mon-info{font-size:0.52rem;color:var(--dim2);}
+.mon-info span{color:var(--testo);}
+
+/* LOG */
+.log-box{max-height:130px;overflow-y:auto;font-size:0.6rem;line-height:1.9;color:var(--dim2);}
+.log-box::-webkit-scrollbar{width:2px;}
+.log-box::-webkit-scrollbar-thumb{background:var(--oro);border-radius:2px;}
+.le{padding:1px 0;border-bottom:1px solid rgba(255,255,255,0.03);}
+.lw{color:#2ecc71;}
+.ll{color:#e74c3c;}
+.li{color:rgba(201,168,76,0.7);}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>🎰 Non-Copying Monitor</h1>
+  <p>Finestra 11 · 3 chance · Progressione 7 colpi · Copertura zero</p>
+</div>
+
+<!-- SWITCH SOGLIA -->
+<div class="switch-bar" id="switchBar">
+  <span class="switch-label">Trigger dopo:</span>
+  <div class="switch-btns">
+    <button class="sw-btn sw-active" id="sw3" onclick="setSoglia(3)">3 copie</button>
+    <button class="sw-btn" id="sw4" onclick="setSoglia(4)">4 copie</button>
+    <button class="sw-btn" id="sw5" onclick="setSoglia(5)">5 copie</button>  </div>
+  <span class="switch-info" id="switchInfo">⚡ Punta dopo 3 match consecutivi</span>
+</div>
+
+<!-- CASSA -->
+<div class="card">
+  <div class="clabel">💰 Cassa <span id="cassaDelta" style="color:var(--dim2)">± 0,00 €</span></div>
+  <div class="cassa-row">
+    <div class="cassa-val" id="cassaVal">841,00 €</div>
+    <div class="cassa-stats">
+      <div class="cst">Sessioni: <span id="stSess">0</span></div>
+      <div class="cst">Vinte: <span id="stVinte">0</span></div>
+      <div class="cst">Perse: <span id="stPerse">0</span></div>
+      <div class="cst">Zero: <span id="stZero">0</span></div>
+    </div>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="cassaBar" style="width:100%"></div></div>
+</div>
+
+<!-- INPUT -->
+<div class="card">
+  <div class="clabel">Inserisci numero uscito (0–36)</div>
+  <div class="input-row">
+    <input class="num-input" id="numIn" type="number" min="0" max="36" placeholder="—">
+    <button class="btn btn-oro" onclick="inserisci()">✓ Inserisci</button>
+    <button class="btn btn-ghost" onclick="autoSpin()">⚡ Auto</button>
+  </div>
+  <div class="prev-row" id="prev"><span style="color:var(--dim2);font-size:0.56rem">digita un numero...</span></div>
+</div>
+
+<!-- ALERT -->
+<div class="alert-wrap" id="alertWrap">
+  <div class="alert-box">
+    <div class="alert-title" id="alertTitle">⚡ ALERT — 4 Match Consecutivi!</div>
+    <div class="alert-sub" id="alertSub">—</div>
+  </div>
+</div>
+
+<!-- PUNTATA ATTIVA -->
+<div class="puntata-box" id="puntataBox">
+  <div class="punt-title" id="puntTitle">🎯 Puntata Attiva</div>
+  <div id="puntIstruzioni" class="punt-istruzioni"></div>
+  <div class="punt-grid">
+    <div class="punt-item">
+      <div class="punt-label">Puntata Chance</div>
+      <div class="punt-val" id="puntChance">—</div>
+    </div>
+    <div class="punt-item">
+      <div class="punt-label">Copertura Zero</div>
+      <div class="punt-val" id="puntZero">—</div>
+    </div>
+    <div class="punt-item">
+      <div class="punt-label">Totale Colpo</div>
+      <div class="punt-val small" id="puntTot">—</div>
+    </div>
+    <div class="punt-item">
+      <div class="punt-label">Totale Speso</div>
+      <div class="punt-val small" id="puntSpeso">—</div>
+    </div>
+  </div>
+  <div class="colpi-row" id="colpiRow"></div>
+  <div class="btn-esito-row">
+    <button class="btn-vinto" onclick="esito('vinto')">✓ Vinto</button>
+    <button class="btn-zero" onclick="esito('zero')">0 Zero</button>
+    <button class="btn-perso" onclick="esito('perso')">✗ Perso</button>
+  </div>
+</div>
+
+<!-- INFO BAR -->
+<div class="ibar">
+  <span>Numeri: <span id="totN">0</span></span>
+  <span>Finestra: <span id="winInfo">accumulo...</span></span>
+</div>
+
+<!-- STORICO -->
+<div class="card">
+  <div class="clabel">Storico <span id="stN" style="color:var(--testo)">0</span></div>
+  <div class="st-scroll" id="storico"><span style="color:var(--dim2);font-size:0.56rem">nessun numero</span></div>
+</div>
+
+<!-- MONITOR COLORE -->
+<div class="monitor" id="monC">
+  <div class="mon-hdr">
+    <div class="mon-title c">🔴 Colore</div>
+    <div class="dots" id="dotsC"></div>
+  </div>
+  <div class="rlabel">Finestra rif.</div>
+  <div class="fin-row" id="rifC"></div>
+  <div class="rlabel">Sequenza corrente</div>
+  <div class="fin-row" id="corrC"></div>
+  <div class="mon-info">Match: <span id="mC">0</span> / 4</div>
+</div>
+
+<!-- MONITOR ALTO/BASSO -->
+<div class="monitor" id="monA">
+  <div class="mon-hdr">
+    <div class="mon-title a">⬆️ Alto / Basso</div>
+    <div class="dots" id="dotsA"></div>
+  </div>
+  <div class="rlabel">Finestra rif.</div>
+  <div class="fin-row" id="rifA"></div>
+  <div class="rlabel">Sequenza corrente</div>
+  <div class="fin-row" id="corrA"></div>
+  <div class="mon-info">Match: <span id="mA">0</span> / 4 · zero ignorato</div>
+</div>
+
+<!-- MONITOR PARI/DISPARI -->
+<div class="monitor" id="monP">
+  <div class="mon-hdr">
+    <div class="mon-title p">🔢 Pari / Dispari</div>
+    <div class="dots" id="dotsP"></div>
+  </div>
+  <div class="rlabel">Finestra rif.</div>
+  <div class="fin-row" id="rifP"></div>
+  <div class="rlabel">Sequenza corrente</div>
+  <div class="fin-row" id="corrP"></div>
+  <div class="mon-info">Match: <span id="mP">0</span> / 4 · zero ignorato</div>
+</div>
+
+<!-- MONITOR DOZZINE -->
+<div class="monitor" id="monD">
+  <div class="mon-hdr">
+    <div class="mon-title doz">🔷 Dozzine</div>
+    <div class="dots" id="dotsD"></div>
+  </div>
+  <div class="rlabel">Finestra rif.</div>
+  <div class="fin-row" id="rifD"></div>
+  <div class="rlabel">Sequenza corrente</div>
+  <div class="fin-row" id="corrD"></div>
+  <div class="mon-info">Match: <span id="mD">0</span> / 4 · zero ignorato</div>
+</div>
+
+<!-- MONITOR COLONNE -->
+<div class="monitor" id="monCol">
+  <div class="mon-hdr">
+    <div class="mon-title col">🔶 Colonne</div>
+    <div class="dots" id="dotsCol"></div>
+  </div>
+  <div class="rlabel">Finestra rif.</div>
+  <div class="fin-row" id="rifCol"></div>
+  <div class="rlabel">Sequenza corrente</div>
+  <div class="fin-row" id="corrCol"></div>
+  <div class="mon-info">Match: <span id="mCol">0</span> / 4 · zero ignorato</div>
+</div>
+
+<!-- SEQUENZE LUNGHE -->
+<div class="card" id="seqCard">
+  <div class="clabel">📊 Sequenze Lunghe (≥7)</div>
+  <div id="seqGrid" class="seq-grid"></div>
+</div>
+
+<!-- LOG -->
+<div class="card">
+  <div class="clabel">📋 Log</div>
+  <div class="log-box" id="logBox"></div>
+</div>
+
+<button class="btn btn-red" onclick="resetTutto()">⚠ Reset Completo</button>
+
+<script>
+// ---- PROGRESSIONE PUNTATE ----
+const PROGRESSIONE = [
+  { chance: 5.00,   zero: 0.20  },
+  { chance: 11.50,  zero: 0.50  },
+  { chance: 23.50,  zero: 1.20  },
+  { chance: 47.50,  zero: 2.60  },
+  { chance: 97.50,  zero: 5.40  },
+  { chance: 200.50, zero: 11.10 },
+  { chance: 412.00, zero: 22.80 },
+];
+
+const CASSA_INIZIO = 841.00;
+const SEQ = 11;
+let SOGLIA = 3; // 3 o 4 match per trigger
+const ROSSI = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+
+function props(n) {
+  return {
+    n,
+    c: n === 0 ? null : (ROSSI.has(n) ? 'R' : 'N'),
+    a: n === 0 ? null : (n <= 18 ? 'B' : 'A'),
+    p: n === 0 ? null : (n % 2 === 0 ? 'P' : 'D'),
+    d: n === 0 ? null : (n <= 12 ? 'D1' : n <= 24 ? 'D2' : 'D3'),
+    k: n === 0 ? null : (n % 3 === 1 ? 'C1' : n % 3 === 2 ? 'C2' : 'C3'),
+  };
+}
+
+let storico = [];
+let mC = 0, mA = 0, mP = 0, mD = 0, mCol = 0;
+
+// Contatori sequenze lunghe
+// Serie: quanti consecutivi dello stesso valore
+// Alternanze: quante alternanze consecutive
+let seq = {
+  cSerie: 0, cVal: null,       // serie colore
+  aSerie: 0, aVal: null,       // serie altezza
+  pSerie: 0, pVal: null,       // serie parità
+  cAlt: 0, cPrev: null,        // alternanza colore
+  aAlt: 0, aPrev: null,        // alternanza altezza
+  pAlt: 0, pPrev: null,        // alternanza parità
+};
+let cassa = CASSA_INIZIO;
+let stSess = 0, stVinte = 0, stPerse = 0, stZero = 0;
+let totalePuntato = 0;
+
+// Stato puntata attiva
+let puntataAttiva = false;
+let colpoCorrente = 0;
+let colpiStato = [];
+let chanceAttive = [];
+let istruzioniPuntata = [];
+let spesoCumulato = 0;
+
+// ---- LOG ----
+function log(msg, tipo='') {
+  const box = document.getElementById('logBox');
+  const el = document.createElement('div');
+  el.className = 'le' + (tipo ? ' l'+tipo : '');
+  el.textContent = msg;
+  box.prepend(el);
+}
+
+// ---- FORMAT ----
+function fmt(n) { return n.toFixed(2).replace('.',',') + ' €'; }
+
+// ---- PREVIEW ----
+document.getElementById('numIn').addEventListener('input', function() {
+  const v = parseInt(this.value);
+  const el = document.getElementById('prev');
+  if (isNaN(v) || v < 0 || v > 36) {
+    el.innerHTML = '<span style="color:var(--dim2);font-size:0.56rem">numero non valido</span>';
+    return;
+  }
+  if (v === 0) {
+    el.innerHTML = '<span class="bdg bdg-v">Zero</span><span class="bdg bdg-z">— altezza</span><span class="bdg bdg-z">— parità</span>';
+    return;
+  }
+  const x = props(v);
+  el.innerHTML = `
+    <span class="bdg ${x.c==='R'?'bdg-r':'bdg-n'}">${x.c==='R'?'Rosso':'Nero'}</span>
+    <span class="bdg ${x.a==='A'?'bdg-a':'bdg-b'}">${x.a==='A'?'Alto 19–36':'Basso 1–18'}</span>
+    <span class="bdg ${x.p==='P'?'bdg-p':'bdg-d'}">${x.p==='P'?'Pari':'Dispari'}</span>
+  `;
+});
+document.getElementById('numIn').addEventListener('keydown', e => { if(e.key==='Enter') inserisci(); });
+
+// ---- INSERISCI ----
+function inserisci() {
+  const inp = document.getElementById('numIn');
+  const v = parseInt(inp.value);
+  if (isNaN(v) || v < 0 || v > 36) {
+    inp.style.borderColor = '#c0392b';
+    setTimeout(() => inp.style.borderColor = '', 700);
+    return;
+  }
+  inp.value = '';
+  document.getElementById('prev').innerHTML = '<span style="color:var(--dim2);font-size:0.56rem">digita un numero...</span>';
+
+  // ZERO: ignorato dal monitoraggio (finestra non si sposta, match invariati)
+  // Se puntata attiva → gestisce automaticamente l'esito zero
+  if (v === 0) {
+    log('⬜ Zero uscito — monitoraggio invariato' + (puntataAttiva ? ', gestione cassa in corso...' : ''));
+    if (puntataAttiva) {
+      esito('zero');
+    }
+    inp.focus();
+    return;
+  }
+
+  const x = props(v);
+  storico.push(x);
+  aggiornaSequenze(x);
+
+  if (storico.length > SEQ && !puntataAttiva) {
+    aggiornaMatch(x);
+    verificaTrigger();
+  } else if (storico.length <= SEQ) {
+    mC = 0; mA = 0; mP = 0;
+  }
+
+  render();
+  inp.focus();
+}
+
+function aggiornaMatch(x) {
+  const N = storico.length;
+  const rifIdx = N - SEQ - 1;
+  if (rifIdx < 0) return;
+  const rif = storico[rifIdx];
+
+  // COLORE
+  if (x.c !== null && rif.c !== null) mC = (x.c === rif.c) ? mC + 1 : 0;
+
+  // ALTEZZA
+  if (x.a !== null && rif.a !== null) mA = (x.a === rif.a) ? mA + 1 : 0;
+
+  // PARITA
+  if (x.p !== null && rif.p !== null) mP = (x.p === rif.p) ? mP + 1 : 0;
+
+  // DOZZINA
+  if (x.d !== null && rif.d !== null) mD = (x.d === rif.d) ? mD + 1 : 0;
+
+  // COLONNA
+  if (x.k !== null && rif.k !== null) mCol = (x.k === rif.k) ? mCol + 1 : 0;
+}
+
+function aggiornaSequenze(x) {
+  // COLORE
+  if (x.c !== null) {
+    if (x.c === seq.cVal) { seq.cSerie++; }
+    else { seq.cSerie = 1; seq.cVal = x.c; }
+    if (x.c !== seq.cPrev && seq.cPrev !== null) { seq.cAlt++; }
+    else { seq.cAlt = 1; }
+    seq.cPrev = x.c;
+  }
+  // ALTEZZA
+  if (x.a !== null) {
+    if (x.a === seq.aVal) { seq.aSerie++; }
+    else { seq.aSerie = 1; seq.aVal = x.a; }
+    if (x.a !== seq.aPrev && seq.aPrev !== null) { seq.aAlt++; }
+    else { seq.aAlt = 1; }
+    seq.aPrev = x.a;
+  }
+  // PARITA
+  if (x.p !== null) {
+    if (x.p === seq.pVal) { seq.pSerie++; }
+    else { seq.pSerie = 1; seq.pVal = x.p; }
+    if (x.p !== seq.pPrev && seq.pPrev !== null) { seq.pAlt++; }
+    else { seq.pAlt = 1; }
+    seq.pPrev = x.p;
+  }
+  // Log alert quando si raggiunge soglia 7
+  const Ssoglia = 7;
+  if (seq.cSerie === Ssoglia) log(`🔥 Serie di ${Ssoglia} ${seq.cVal === 'R' ? 'ROSSI' : 'NERI'} consecutivi!`, 'i');
+  if (seq.aSerie === Ssoglia) log(`🔥 Serie di ${Ssoglia} ${seq.aVal === 'A' ? 'ALTI' : 'BASSI'} consecutivi!`, 'i');
+  if (seq.pSerie === Ssoglia) log(`🔥 Serie di ${Ssoglia} ${seq.pVal === 'P' ? 'PARI' : 'DISPARI'} consecutivi!`, 'i');
+  if (seq.cAlt === Ssoglia) log(`〰️ Alternanza COLORE da ${Ssoglia} turni!`, 'i');
+  if (seq.aAlt === Ssoglia) log(`〰️ Alternanza ALTO/BASSO da ${Ssoglia} turni!`, 'i');
+  if (seq.pAlt === Ssoglia) log(`〰️ Alternanza PARI/DISPARI da ${Ssoglia} turni!`, 'i');
+}
+
+function verificaTrigger() {
+  const triggered = [];
+  const istruzioni = []; // cosa puntare esattamente
+
+  if (mC >= SOGLIA) {
+    triggered.push('🔴 Colore');
+    // L'ultimo valore copiato è storico[storico.length-1].c
+    const ultimo = storico[storico.length - 1].c;
+    istruzioni.push('🔴 Colore → punta ' + (ultimo === 'R' ? '⚫ NERO' : '🔴 ROSSO'));
+  }
+  if (mA >= SOGLIA) {
+    triggered.push('⬆️ Alto/Basso');
+    const ultimo = storico[storico.length - 1].a;
+    istruzioni.push('⬆️ Alto/Basso → punta ' + (ultimo === 'A' ? '⬇️ BASSO (1–18)' : '⬆️ ALTO (19–36)'));
+  }
+  if (mP >= SOGLIA) {
+    triggered.push('🔢 Pari/Dispari');
+    const ultimo = storico[storico.length - 1].p;
+    istruzioni.push('🔢 Pari/Dispari → punta ' + (ultimo === 'P' ? '🔢 DISPARI' : '🔢 PARI'));
+  }
+
+  if (triggered.length > 0 && !puntataAttiva) {
+    avviaPuntata(triggered, istruzioni);
+  }
+}
+
+function avviaPuntata(triggered, istruzioni) {
+  puntataAttiva = true;
+  colpoCorrente = 0;
+  colpiStato = new Array(7).fill('pend');
+  colpiStato[0] = 'curr';
+  chanceAttive = triggered;
+  istruzioniPuntata = istruzioni;
+  spesoCumulato = 0;
+  stSess++;
+  log(`⚡ TRIGGER — ${istruzioni.join(' | ')} — Colpo 1: ${fmt(PROGRESSIONE[0].chance)} + zero ${fmt(PROGRESSIONE[0].zero)}`, 'i');
+}
+
+// ---- ESITO PUNTATA ----
+function esito(tipo) {
+  if (!puntataAttiva) return;
+  const p = PROGRESSIONE[colpoCorrente];
+  const totColpo = p.chance + p.zero;
+  spesoCumulato += totColpo;
+  cassa -= totColpo;
+  totalePuntato += totColpo;
+
+  if (tipo === 'vinto') {
+    const incasso = p.chance * 2;
+    cassa += incasso;
+    const netto = incasso - spesoCumulato;
+    colpiStato[colpoCorrente] = 'win';
+    stVinte++;
+    log(`✓ Colpo ${colpoCorrente+1} VINTO — Netto: ${fmt(netto)} | Cassa: ${fmt(cassa)}`, 'w');
+    chiudiPuntata();
+  } else if (tipo === 'zero') {
+    const incassoZero = p.zero * 35;
+    cassa += incassoZero;
+    colpiStato[colpoCorrente] = 'zero';
+    stZero++;
+    // Rimborso: non avanza il colpo, stesso colpo si ripete
+    // Ma lo speso di questo colpo va tolto (rimborso parziale)
+    const rimborso = incassoZero - totColpo;
+    spesoCumulato -= totColpo; // annulla questo colpo dallo speso cumulato
+    cassa += totColpo; // ri-accredita il totale colpo (era stato scalato sopra)
+    cassa -= totColpo; // ri-scala solo la parte non rimborsata dallo zero
+    // Più semplice: cassa già scalata di totColpo, poi incassa zero*35
+    // Netto colpo zero = zero*35 - totColpo
+    const nettoZero = incassoZero - totColpo;
+    log(`🟢 ZERO al colpo ${colpoCorrente+1} — Incasso: ${fmt(incassoZero)} | Netto colpo: ${fmt(nettoZero)} | Cassa: ${fmt(cassa)}`, 'w');
+    // Aggiorna chip e rimane sullo stesso colpo
+    colpiStato[colpoCorrente] = 'zero';
+    // Resetta speso: zero non conta come perdita
+    spesoCumulato -= totColpo;
+    // Non avanzare il colpo — stesso trigger rimane
+  } else {
+    // PERSO
+    colpiStato[colpoCorrente] = 'lose';
+    log(`✗ Colpo ${colpoCorrente+1} PERSO — Speso tot: ${fmt(spesoCumulato)} | Cassa: ${fmt(cassa)}`, 'l');
+    colpoCorrente++;
+    if (colpoCorrente >= 7 || cassa < PROGRESSIONE[colpoCorrente]?.chance) {
+      stPerse++;
+      log(`💀 Sessione persa. Perdita totale: ${fmt(spesoCumulato)} | Cassa: ${fmt(cassa)}`, 'l');
+      chiudiPuntata();
+    } else {
+      colpiStato[colpoCorrente] = 'curr';
+      // Alert copia N+4
+      const copiaNum = colpoCorrente + SOGLIA + 1;
+      log(`⚡ COPIA ${copiaNum}! Colpo ${colpoCorrente+1} — Punta ${fmt(PROGRESSIONE[colpoCorrente].chance)} + zero ${fmt(PROGRESSIONE[colpoCorrente].zero)}`, 'i');
+    }
+  }
+
+  render();
+}
+
+function chiudiPuntata() {
+  puntataAttiva = false;
+  mC = 0; mA = 0; mP = 0; mD = 0; mCol = 0;
+  chanceAttive = [];
+  istruzioniPuntata = [];
+  spesoCumulato = 0;
+  colpoCorrente = 0;
+}
+
+function autoSpin() {
+  const n = Math.floor(Math.random() * 37);
+  document.getElementById('numIn').value = n;
+  document.getElementById('numIn').dispatchEvent(new Event('input'));
+  setTimeout(inserisci, 80);
+}
+
+// ---- RENDER ----
+function clsC(v) { return v==='R'?'fc-r':v==='N'?'fc-n':'fc-em'; }
+function clsD(v) { return v==='D1'?'fc-d1':v==='D2'?'fc-d2':v==='D3'?'fc-d3':'fc-em'; }
+function lblD(v) { return v==='D1'?'1ª':v==='D2'?'2ª':v==='D3'?'3ª':''; }
+function clsK(v) { return v==='C1'?'fc-c1':v==='C2'?'fc-c2':v==='C3'?'fc-c3':'fc-em'; }
+function lblK(v) { return v==='C1'?'C1':v==='C2'?'C2':v==='C3'?'C3':''; }
+function lblC(v) { return v==='R'?'R':v==='N'?'N':''; }
+function clsA(v) { return v==='A'?'fc-a':v==='B'?'fc-b':'fc-em'; }
+function lblA(v) { return v==='A'?'A':v==='B'?'B':''; }
+function clsP(v) { return v==='P'?'fc-p':v==='D'?'fc-d':'fc-em'; }
+function lblP(v) { return v==='P'?'P':v==='D'?'D':''; }
+
+function drawRif(elId, arr, clsFn, lblFn) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  for (let i = 0; i < SEQ; i++) {
+    const d = document.createElement('div');
+    d.className = 'fc ' + (i < arr.length && arr[i] ? clsFn(arr[i]) : 'fc-em');
+    d.textContent = i < arr.length && arr[i] ? lblFn(arr[i]) : '';
+    el.appendChild(d);
+  }
+}
+
+function drawCorr(elId, rifArr, corrArr, clsFn, lblFn) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  for (let i = 0; i < SEQ; i++) {
+    const d = document.createElement('div');
+    if (i < corrArr.length && corrArr[i]) {
+      d.className = 'fc ' + clsFn(corrArr[i]);
+      d.textContent = lblFn(corrArr[i]);
+      if (rifArr[i]) d.classList.add(corrArr[i] === rifArr[i] ? 'ok' : 'ko');
+    } else {
+      d.className = 'fc fc-em';
+    }
+    el.appendChild(d);
+  }
+}
+
+function getRif(arr, matchCount) {
+  const N = arr.length;
+  const fine = N - matchCount;
+  const ini = Math.max(0, fine - SEQ);
+  return arr.slice(ini, fine);
+}
+function getCorr(arr, matchCount) { return arr.slice(arr.length - matchCount); }
+
+function dots(elId, count) {
+  const el = document.getElementById(elId);
+  el.innerHTML = '';
+  for (let i = 0; i < SOGLIA; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i < count ? ' on' : '');
+    el.appendChild(d);
+  }
+}
+function renderSequenze() {
+  const SOGLIA_SEQ = 7;
+  const items = [
+    { id:'sq-cr', name:'Serie Rossi/Neri', val: seq.cSerie, label: seq.cVal==='R'?'🔴':'⚫', isSerie:true },
+    { id:'sq-ar', name:'Serie Alto/Basso', val: seq.aSerie, label: seq.aVal==='A'?'⬆️':'⬇️', isSerie:true },
+    { id:'sq-pr', name:'Serie Pari/Dispari', val: seq.pSerie, label: seq.pVal==='P'?'P':'D', isSerie:true },
+    { id:'sq-ca', name:'Alternanza Colore', val: seq.cAlt, label:'↔️', isSerie:false },
+    { id:'sq-aa', name:'Alternanza Alto/Basso', val: seq.aAlt, label:'↔️', isSerie:false },
+    { id:'sq-pa', name:'Alternanza Pari/Dispari', val: seq.pAlt, label:'↔️', isSerie:false },
+  ];
+  const grid = document.getElementById('seqGrid');
+  grid.innerHTML = '';
+  items.forEach(item => {
+    const isHot = item.val >= SOGLIA_SEQ;
+    const isAlt = !item.isSerie && isHot;
+    const pct = Math.min(100, (item.val / 12) * 100);
+    const fillColor = isAlt ? '#5dade2' : isHot ? 'var(--oro)' : 'rgba(255,255,255,0.15)';
+    const div = document.createElement('div');
+    div.className = 'seq-item' + (isAlt ? ' alt-alert' : isHot ? ' alert' : '');
+    div.innerHTML = `
+      <div>
+        <div class="seq-name">${item.name}</div>
+        <div class="seq-bar"><div class="seq-fill" style="width:${pct}%;background:${fillColor}"></div></div>
+      </div>
+      <div class="seq-count${isAlt?' alt-hot':isHot?' hot':''}">${item.val > 0 ? item.label + ' ' + item.val : '—'}</div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function render() {
+  const N = storico.length;
+  renderSequenze();
+
+  // CASSA
+  document.getElementById('cassaVal').textContent = fmt(cassa);
+  const pct = Math.max(0, Math.min(100, (cassa / CASSA_INIZIO) * 100));
+  document.getElementById('cassaBar').style.width = pct + '%';
+  const delta = cassa - CASSA_INIZIO;
+  const dEl = document.getElementById('cassaDelta');
+  dEl.textContent = (delta >= 0 ? '+' : '') + fmt(delta);
+  dEl.style.color = delta >= 0 ? '#2ecc71' : '#e74c3c';
+  document.getElementById('stSess').textContent = stSess;
+  document.getElementById('stVinte').textContent = stVinte;
+  document.getElementById('stPerse').textContent = stPerse;
+  document.getElementById('stZero').textContent = stZero;
+
+  // INFO BAR
+  document.getElementById('totN').textContent = N;
+  document.getElementById('stN').textContent = N;
+  document.getElementById('winInfo').textContent = N >= SEQ
+    ? `pos. ${N - SEQ + 1}–${N}`
+    : `${N}/${SEQ} (accumulo)`;
+
+  // STORICO
+  const sc = document.getElementById('storico');
+  if (N === 0) {
+    sc.innerHTML = '<span style="color:var(--dim2);font-size:0.56rem">nessun numero</span>';
+  } else {
+    sc.innerHTML = '';
+    const ws = Math.max(0, N - SEQ);
+    storico.forEach((x, i) => {
+      const chip = document.createElement('div');
+      chip.className = 'nc ' + (x.c === 'R' ? 'nc-r' : 'nc-n');
+      if (i >= ws) chip.classList.add('win');
+      if (i === N - 1) chip.classList.add('new');
+      chip.innerHTML = `<span>${x.n}</span><span class="nc-idx">${i+1}</span>`;
+      sc.appendChild(chip);
+    });
+    sc.scrollLeft = sc.scrollWidth;
+  }
+
+  // DOTS e MATCH
+  const mc = Math.min(mC, SOGLIA), ma = Math.min(mA, SOGLIA), mp = Math.min(mP, SOGLIA);
+  const md = Math.min(mD, SOGLIA), mcol = Math.min(mCol, SOGLIA);
+  dots('dotsC', mc); dots('dotsA', ma); dots('dotsP', mp);
+  dots('dotsD', md); dots('dotsCol', mcol);
+  document.getElementById('mC').textContent = mC;
+  document.getElementById('mA').textContent = mA;
+  document.getElementById('mP').textContent = mP;
+  document.getElementById('mD').textContent = mD;
+  document.getElementById('mCol').textContent = mCol;
+
+  // FINESTRE
+  if (N >= SEQ) {
+    const cs = storico.map(x => x.c);
+    const rifC = getRif(cs, mC);
+    drawRif('rifC', rifC, clsC, lblC);
+    drawCorr('corrC', rifC, getCorr(cs, mC), clsC, lblC);
+
+    const as = storico.map(x => x.a);
+    const rifA = getRif(as, mA);
+    drawRif('rifA', rifA, clsA, lblA);
+    drawCorr('corrA', rifA, getCorr(as, mA), clsA, lblA);
+
+    const ps = storico.map(x => x.p);
+    const rifP = getRif(ps, mP);
+    drawRif('rifP', rifP, clsP, lblP);
+    drawCorr('corrP', rifP, getCorr(ps, mP), clsP, lblP);
+
+    const ds = storico.map(x => x.d);
+    const rifD = getRif(ds, mD);
+    drawRif('rifD', rifD, clsD, lblD);
+    drawCorr('corrD', rifD, getCorr(ds, mD), clsD, lblD);
+
+    const ks = storico.map(x => x.k);
+    const rifK = getRif(ks, mCol);
+    drawRif('rifCol', rifK, clsK, lblK);
+    drawCorr('corrCol', rifK, getCorr(ks, mCol), clsK, lblK);
+  } else {
+    drawRif('rifC', storico.map(x=>x.c), clsC, lblC);
+    drawRif('rifA', storico.map(x=>x.a), clsA, lblA);
+    drawRif('rifP', storico.map(x=>x.p), clsP, lblP);
+    drawRif('rifD', storico.map(x=>x.d), clsD, lblD);
+    drawRif('rifCol', storico.map(x=>x.k), clsK, lblK);
+    ['corrC','corrA','corrP','corrD','corrCol'].forEach(id => {
+      const el = document.getElementById(id);
+      el.innerHTML = '';
+      for (let i = 0; i < SEQ; i++) {
+        const d = document.createElement('div'); d.className = 'fc fc-em'; el.appendChild(d);
+      }
+    });
+  }
+
+  // HOT
+  document.getElementById('monC').classList.toggle('hot', mC >= SOGLIA);
+  document.getElementById('monA').classList.toggle('hot', mA >= SOGLIA);
+  document.getElementById('monP').classList.toggle('hot', mP >= SOGLIA);
+  document.getElementById('monD').classList.toggle('hot', mD >= SOGLIA);
+  document.getElementById('monCol').classList.toggle('hot', mCol >= SOGLIA);
+
+  // ALERT
+  const aw = document.getElementById('alertWrap');
+  const alerts = [];
+  if (mC >= SOGLIA) alerts.push('🔴 Colore');
+  if (mA >= SOGLIA) alerts.push('⬆️ Alto/Basso');
+  if (mP >= SOGLIA) alerts.push('🔢 Pari/Dispari');
+  if (alerts.length && !puntataAttiva) {
+    aw.classList.add('show');
+    document.getElementById('alertSub').textContent = 'Punta contro: ' + alerts.join(' · ');
+  } else {
+    aw.classList.remove('show');
+  }
+
+  // PUNTATA BOX
+  const pb = document.getElementById('puntataBox');
+  if (puntataAttiva) {
+    pb.classList.add('show');
+    const p = PROGRESSIONE[colpoCorrente];
+    const totColpo = p.chance + p.zero;
+    const copiaNum = colpoCorrente + SOGLIA + 1;
+
+    // Titolo colpo
+    document.getElementById('puntTitle').textContent =
+      colpoCorrente === 0
+        ? `🎯 Colpo 1 — Puntata Attiva`
+        : `⚡ COPIA ${copiaNum} — Colpo ${colpoCorrente + 1}`;
+
+    // Istruzioni cosa puntare
+    const istrEl = document.getElementById('puntIstruzioni');
+    if (istrEl) {
+      istrEl.innerHTML = istruzioniPuntata.map(i =>
+        `<div class="istr-row">${i}</div>`
+      ).join('');
+    }
+
+    document.getElementById('puntChance').textContent = fmt(p.chance);
+    document.getElementById('puntZero').textContent = fmt(p.zero);
+    document.getElementById('puntTot').textContent = fmt(totColpo);
+    document.getElementById('puntSpeso').textContent = fmt(spesoCumulato + totColpo);
+
+    // Colpi chips
+    const cr = document.getElementById('colpiRow');
+    cr.innerHTML = '';
+    for (let i = 0; i < 7; i++) {
+      const ch = document.createElement('div');
+      ch.className = 'colpo-chip ';
+      const s = colpiStato[i] || 'pend';
+      if (s === 'pend') ch.classList.add('cc-pend');
+      else if (s === 'curr') ch.classList.add('cc-curr');
+      else if (s === 'win') ch.classList.add('cc-win');
+      else if (s === 'lose') ch.classList.add('cc-lose');
+      else if (s === 'zero') ch.classList.add('cc-zero');
+      ch.textContent = i + 1;
+      cr.appendChild(ch);
+    }
+  } else {
+    pb.classList.remove('show');
+  }
+}
+
+function setSoglia(n) {
+  if (puntataAttiva) return; // non cambiare durante puntata
+  SOGLIA = n;
+  document.getElementById('sw3').classList.toggle('sw-active', n === 3);
+  document.getElementById('sw4').classList.toggle('sw-active', n === 4);
+  document.getElementById('sw5').classList.toggle('sw-active', n === 5);
+  document.getElementById('switchInfo').textContent =
+    n === 3 ? '⚡ Punta dopo 3 match consecutivi' :
+    n === 4 ? '⚡ Punta dopo 4 match consecutivi' :
+              '⚡ Punta dopo 5 match consecutivi';
+  // Resetta i match per evitare trigger immediati col nuovo valore
+  mC = 0; mA = 0; mP = 0; mD = 0; mCol = 0;
+  log(`🔧 Modalità cambiata: trigger dopo ${n} copie`, 'i');
+  render();
+}
+
+function resetTutto() {
+  storico = []; mC = 0; mA = 0; mP = 0;
+  cassa = CASSA_INIZIO; stSess = 0; stVinte = 0; stPerse = 0; stZero = 0;
+  totalePuntato = 0; puntataAttiva = false; colpoCorrente = 0;
+  colpiStato = []; chanceAttive = []; istruzioniPuntata = []; spesoCumulato = 0;
+  mD = 0; mCol = 0;
+  seq = { cSerie:0,cVal:null,aSerie:0,aVal:null,pSerie:0,pVal:null,cAlt:0,cPrev:null,aAlt:0,aPrev:null,pAlt:0,pPrev:null };
+  document.getElementById('logBox').innerHTML = '';
+  log('🔄 Reset completo — Cassa: ' + fmt(CASSA_INIZIO), 'i');
+  render();
+}
+
+render();
+log('Benvenuto! Inserisci i primi 11 numeri per costruire la finestra.', 'i');
+document.getElementById('numIn').focus();
+</script>
+</body>
+</html>
